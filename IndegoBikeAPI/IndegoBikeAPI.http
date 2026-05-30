@@ -1,0 +1,6 @@
+@IndegoBikeAPI_HostAddress = http://localhost:5232
+
+GET {{IndegoBikeAPI_HostAddress}}/api/stations/
+Accept: application/json
+
+###
