@@ -8,6 +8,7 @@ builder.Services.AddDbContext<IndegoBikeContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("IndegoBike")));
 
 builder.Services.AddScoped<IStationService, StationService>();
+builder.Services.AddScoped<IRidershipService, RidershipService>();
 
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
@@ -27,3 +28,5 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+public partial class Program { }
