@@ -11,7 +11,7 @@ pipeline {
         stage('Test') {
             steps {
                 // Changed coverage collector to opencover to match what SonarQube expects for C#
-                sh 'dotnet test --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=./TestResults/coverage.cobertura.xml'
+		sh 'dotnet test --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover'
             }
             post {
                 always {
@@ -33,7 +33,7 @@ pipeline {
                             withSonarQubeEnv('SonarQube') {
                                 sh '''
                                     dotnet sonarscanner begin /k:"ProjectKey" \
-                                        /d:sonar.host.url="http://localhost:9000" \
+                                        /d:sonar.host.url="http://host.docker.internal:9000"
                                         /d:sonar.token="${TOKEN}" \
                                         /d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.opencover.xml"
                                     
