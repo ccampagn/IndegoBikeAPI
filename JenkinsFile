@@ -29,7 +29,8 @@ pipeline {
                                 sh 'dotnet build --no-incremental --configuration Release'
                                 
                                 // 3. Run tests once, generating BOTH Cobertura (for Jenkins) and OpenCover (for Sonar)
-                                sh 'dotnet test --no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat="cobertura,opencover"'
+				sh 'dotnet test --no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=\"cobertura,opencover\"'
+
                                 
                                 // 4. Finalize the analysis and send the results to SonarQube
                                 sh 'dotnet sonarscanner end /d:sonar.token="${TOKEN}"'
