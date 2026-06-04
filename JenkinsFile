@@ -34,13 +34,8 @@ pipeline {
 				sh '''dotnet sonarscanner begin /k:"ProjectKey" \
       					/d:sonar.host.url="http://host.docker.internal:9000" \
       					/d:sonar.token="your_actual_token" \
-      					/d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.opencover.xml"'''
-  
-                                    
-                                    # Force a clean rebuild so the scanner captures every single file
-                                    dotnet build --no-restore --no-incremental
-                                    
-                                    dotnet sonarscanner end /d:sonar.token="${TOKEN}"
+      					/d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.opencover.xml"
+                                    	dotnet sonarscanner end /d:sonar.token="${TOKEN}"
                                 '''
                             }
                         }
