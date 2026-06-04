@@ -1,0 +1,71 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Restore') {
+            steps {
+                sh 'dotnet restore'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                // Changed coverage collector to opencover to match what SonarQube expects for C#
+                sh 'dotnet test --no-restore --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover'
+            }
+            post {
+                always {
+                    // Jenkins can still read the coverage files for the dashboard if needed
+                    recordCoverage(tools: [[parser: 'COBERTURA', pattern: '**/TestResults/**/coverage.cobertura.xml']])
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                script {
+                    // Ensure global tool path exists and tool is installed
+                    sh 'dotnet tool install --global dotnet-sonarscanner || true'
+                    
+                    withCredentials([string(credentialsId: 'sonar-token', variable: 'TOKEN')]) {
+                        // Correct path syntax for adding global dotnet tools in Linux environments
+                        withEnv(["PATH+SONAR=${env.HOME}/.dotnet/tools"]) {
+                            withSonarQubeEnv('SonarQube') {
+                                sh '''
+                                    dotnet sonarscanner begin /k:"ProjectKey" \
+                                        /d:sonar.host.url="${SONAR_HOST_URL}" \
+                                        /d:sonar.token="${TOKEN}" \
+                                        /d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.opencover.xml"
+                                    
+                                    # Force a clean rebuild so the scanner captures every single file
+                                    dotnet build --no-restore --no-incremental
+                                    
+                                    dotnet sonarscanner end /d:sonar.token="${TOKEN}"
+                                '''
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        stage("Quality Gate") {
+            steps {
+                timeout(time: 10, unit: 'MINUTES') { 
+                    waitForQualityGate abortPipeline: true
+                }
+            }
+        }
+
+        stage('Deliver') { 
+            steps {
+                sh 'dotnet publish IndegoBikeAPI --no-restore -o published'  
+            }
+            post {
+                success {
+                    archiveArtifacts 'published/**/*' 
+                }
+            }
+        }
+    }
+}
