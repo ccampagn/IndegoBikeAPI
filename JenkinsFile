@@ -11,7 +11,7 @@ pipeline {
         stage('Test') {
             steps {
                 // Changed coverage collector to opencover to match what SonarQube expects for C#
-                sh 'dotnet test --no-restore --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover'
+                sh 'dotnet test --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=cobertura /p:CoverletOutput=./TestResults/coverage.cobertura.xml'
             }
             post {
                 always {
