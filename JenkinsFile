@@ -8,38 +8,40 @@ pipeline {
             }
         }
 
-        stage('Test') {
-            steps {
-                // Changed coverage collector to opencover to match what SonarQube expects for C#
-		sh 'dotnet test --no-restore --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover'
-            }
-            post {
-                always {
-                    // Jenkins can still read the coverage files for the dashboard if needed
-			 recordCoverage(tools: [[parser: 'COBERTURA', pattern: '**/TestResults/**/coverage.cobertura.xml']])
-                }
-            }
-        }
-
-        stage('SonarQube Analysis') {
+        stage('Build & SonarQube Analysis') {
             steps {
                 script {
                     // Ensure global tool path exists and tool is installed
                     sh 'dotnet tool install --global dotnet-sonarscanner || true'
                     
                     withCredentials([string(credentialsId: 'sonar-token', variable: 'TOKEN')]) {
-                        // Correct path syntax for adding global dotnet tools in Linux environments
                         withEnv(["PATH+SONAR=${env.HOME}/.dotnet/tools"]) {
                             withSonarQubeEnv('SonarQube') {
-				sh 'dotnet sonarscanner begin /k:"ProjectKey"'
-      				sh 'dotnet build --no-incremental --configuration Release'
-				sh 'dotnet test --no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat="cobertura,opencover"'
-
-// 4. Finalize the analysis and send the results to SonarQube
-sh 'dotnet sonarscanner end /d:sonar.token="${TOKEN}"'
+                                
+                                // 1. Start SonarScanner (with OpenCover file path specified)
+                                // Note: withSonarQubeEnv automatically passes the host URL and project key in most modern setups,
+                                // but we add the coverage path and token here.
+                                sh '''dotnet sonarscanner begin /k:"ProjectKey" \
+                                      /d:sonar.token="${TOKEN}" \
+                                      /d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.opencover.xml"'''
+                                
+                                // 2. Force a clean rebuild so the scanner captures every single file
+                                sh 'dotnet build --no-incremental --configuration Release'
+                                
+                                // 3. Run tests once, generating BOTH Cobertura (for Jenkins) and OpenCover (for Sonar)
+                                sh 'dotnet test --no-build --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat="cobertura,opencover"'
+                                
+                                // 4. Finalize the analysis and send the results to SonarQube
+                                sh 'dotnet sonarscanner end /d:sonar.token="${TOKEN}"'
                             }
                         }
                     }
+                }
+            }
+            post {
+                always {
+                    // Jenkins reads the Cobertura file generated during the test step above
+                    recordCoverage(tools: [[parser: 'COBERTURA', pattern: '**/TestResults/**/coverage.cobertura.xml']])
                 }
             }
         }
@@ -54,7 +56,8 @@ sh 'dotnet sonarscanner end /d:sonar.token="${TOKEN}"'
 
         stage('Deliver') { 
             steps {
-                sh 'dotnet publish IndegoBikeAPI --no-restore -o published'  
+                // Building was handled in Release configuration above, publish it out
+                sh 'dotnet publish IndegoBikeAPI --no-restore --configuration Release -o published'  
             }
             post {
                 success {
