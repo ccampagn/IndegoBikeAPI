@@ -31,11 +31,11 @@ pipeline {
                         // Correct path syntax for adding global dotnet tools in Linux environments
                         withEnv(["PATH+SONAR=${env.HOME}/.dotnet/tools"]) {
                             withSonarQubeEnv('SonarQube') {
-                                sh '''
-                                    dotnet sonarscanner begin /k:"ProjectKey" \
-                                        /d:sonar.host.url="http://host.docker.internal:9000"
-                                        /d:sonar.token="${TOKEN}" \
-                                        /d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.opencover.xml"
+				sh '''dotnet sonarscanner begin /k:"ProjectKey" \
+      					/d:sonar.host.url="http://host.docker.internal:9000" \
+      					/d:sonar.token="your_actual_token" \
+      					/d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.opencover.xml"'''
+  
                                     
                                     # Force a clean rebuild so the scanner captures every single file
                                     dotnet build --no-restore --no-incremental
