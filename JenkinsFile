@@ -11,12 +11,12 @@ pipeline {
         stage('Test') {
             steps {
                 // Changed coverage collector to opencover to match what SonarQube expects for C#
-		sh 'dotnet test --configuration Release /p:CollectCoverage=true /p:CoverletOutputFormat=opencover'
+		sh 'dotnet test --no-restore --collect:"XPlat Code Coverage" -- DataCollectionRunSettings.DataCollectors.DataCollector.Configuration.Format=opencover'
             }
             post {
                 always {
                     // Jenkins can still read the coverage files for the dashboard if needed
-			recordCoverage(tools: [[parser: 'OPENCOVER', pattern: '**/TestResults/**/coverage.opencover.xml']])
+			 recordCoverage(tools: [[parser: 'COBERTURA', pattern: '**/TestResults/**/coverage.cobertura.xml']])
                 }
             }
         }
@@ -33,7 +33,7 @@ pipeline {
                             withSonarQubeEnv('SonarQube') {
 				sh '''dotnet sonarscanner begin /k:"ProjectKey" \
       					/d:sonar.host.url="http://host.docker.internal:9000" \
-      					/d:sonar.token="your_actual_token" \
+      					/d:sonar.token="${TOKEN}" \
       					/d:sonar.cs.opencover.reportsPaths="**/TestResults/**/coverage.opencover.xml"
                                     	dotnet sonarscanner end /d:sonar.token="${TOKEN}"
                                 '''
