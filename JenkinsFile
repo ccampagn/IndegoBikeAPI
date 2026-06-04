@@ -16,7 +16,7 @@ pipeline {
             post {
                 always {
                     // Jenkins can still read the coverage files for the dashboard if needed
-                    recordCoverage(tools: [[parser: 'COBERTURA', pattern: '**/TestResults/**/coverage.cobertura.xml']])
+			recordCoverage(tools: [[parser: 'OPENCOVER', pattern: '**/TestResults/**/coverage.opencover.xml']])
                 }
             }
         }
