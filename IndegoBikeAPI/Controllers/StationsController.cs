@@ -1,11 +1,13 @@
 using IndegoBikeAPI.Models;
 using IndegoBikeAPI.Services;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 
 namespace IndegoBikeAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[EnableCors("IndegoBikeWebsite")]
 public class StationsController(IStationService stations) : ControllerBase
 {
     [HttpGet]

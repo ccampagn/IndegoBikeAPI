@@ -11,6 +11,16 @@ builder.Services.AddDbContext<IndegoBikeContext>(options =>
 builder.Services.AddScoped<IStationService, StationService>();
 builder.Services.AddScoped<IRidershipService, RidershipService>();
 
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("IndegoBikeWebsite", policy =>
+        policy.WithOrigins(
+            "http://localhost:5188",
+            "https://localhost:7211")
+              .AllowAnyMethod()
+              .AllowAnyHeader());
+});
+
 builder.Services.AddControllers();
 builder.Services.AddOpenApi();
 
@@ -25,9 +35,11 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
+app.UseCors("IndegoBikeWebsite");
+
 app.UseAuthorization();
 
-app.MapControllers();
+app.MapControllers().RequireCors("IndegoBikeWebsite");
 
 app.Run();
 

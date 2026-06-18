@@ -1,92 +1,147 @@
 using IndegoBikeAPI.Data;
 using IndegoBikeAPI.Models;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace IndegoBikeAPI.Services;
 
 public class RidershipService(IndegoBikeContext db) : IRidershipService
 {
-    // 2000-01-02 is a Sunday; DATEDIFF(day, ref, date) % 7 → 0=Sun…6=Sat (matches DayOfWeek enum)
-    private static readonly DateTime SundayRef = new(2000, 1, 2);
-
-    public async Task<IEnumerable<RidershipByMonthDto>> GetRidershipByMonthAsync(TripFilterParams f) =>
-        
-        await ApplyFilters(f)
-            .GroupBy(t => t.StartDate.Month)
-            .Select(g => new RidershipByMonthDto { Month = g.Key, TripCount = g.Count() })
-            .OrderBy(r => r.Month)
-            .ToListAsync();
-
-    public async Task<IEnumerable<RidershipByDayOfWeekDto>> GetRidershipByDayOfWeekAsync(TripFilterParams f) =>
-        await ApplyFilters(f)
-            .GroupBy(t => EF.Functions.DateDiffDay(SundayRef, t.StartDate) % 7)
-            .Select(g => new RidershipByDayOfWeekDto { DayOfWeek = g.Key, TripCount = g.Count() })
-            .OrderBy(r => r.DayOfWeek)
-            .ToListAsync();
-
-    public async Task<IEnumerable<RidershipByHourDto>> GetRidershipByHourAsync(TripFilterParams f) =>
-        await ApplyFilters(f)
-            .GroupBy(t => t.StartDate.Hour)
-            .Select(g => new RidershipByHourDto { Hour = g.Key, TripCount = g.Count() })
-            .OrderBy(r => r.Hour)
-            .ToListAsync();
-
-    public async Task<IEnumerable<RidershipByStationDto>> GetRidershipByStationAsync(TripFilterParams f) =>
-        await ApplyFilters(f)
-            .GroupBy(t => t.StartStationID)
-            .Select(g => new RidershipByStationDto { StationID = g.Key, TripCount = g.Count() })
-            .OrderByDescending(r => r.TripCount)
-            .ToListAsync();
-
-    public async Task<IEnumerable<RidershipByBikeDto>> GetRidershipByBikeAsync(TripFilterParams f) =>
-        await ApplyFilters(f)
-            .GroupBy(t => t.BikeID)
-            .Select(g => new RidershipByBikeDto { BikeID = g.Key, TripCount = g.Count() })
-            .OrderByDescending(r => r.TripCount)
-            .ToListAsync();
-
-    public async Task<IEnumerable<RidershipByBikeTypeDto>> GetRidershipByBikeTypeAsync(TripFilterParams f) =>
-        await ApplyFilters(f)
-            .Join(db.Bikes, t => t.BikeID, b => b.BikeID, (t, b) => b.BikeTypeID)
-            .GroupBy(bikeTypeId => bikeTypeId)
-            .Select(g => new RidershipByBikeTypeDto { BikeTypeID = g.Key, TripCount = g.Count() })
-            .OrderBy(r => r.BikeTypeID)
-            .ToListAsync();
-
-    public async Task<IEnumerable<TopRoutePairingDto>> GetTopRoutePairingsAsync(TripFilterParams f) =>
-        await ApplyFilters(f)
-            .GroupBy(t => new { t.StartStationID, t.EndStationID })
-            .Select(g => new TopRoutePairingDto
-            {
-                StartStationID = g.Key.StartStationID,
-                EndStationID = g.Key.EndStationID,
-                TripCount = g.Count()
-            })
-            .OrderByDescending(r => r.TripCount)
-            .Take(50)
-            .ToListAsync();
-
-    private IQueryable<Trip> ApplyFilters(TripFilterParams f)
+    public async Task<IEnumerable<RidershipByMonthDto>> GetRidershipByMonthAsync(TripFilterParams f)
     {
-        var query = db.Trips.AsQueryable();
+        var (join, where, p) = BuildClauses(f);
+        return await db.Database.SqlQueryRaw<RidershipByMonthDto>($"""
+            SELECT MONTH(t.StartDate) AS Month, COUNT(*) AS TripCount
+            FROM Trip t {join}
+            {where}
+            GROUP BY MONTH(t.StartDate)
+            ORDER BY Month
+            """, p).ToListAsync();
+    }
+
+    public async Task<IEnumerable<RidershipByDayOfWeekDto>> GetRidershipByDayOfWeekAsync(TripFilterParams f)
+    {
+        var (join, where, p) = BuildClauses(f);
+        return await db.Database.SqlQueryRaw<RidershipByDayOfWeekDto>($"""
+            SELECT DATEDIFF(day, '20000102', t.StartDate) % 7 AS DayOfWeek, COUNT(*) AS TripCount
+            FROM Trip t {join}
+            {where}
+            GROUP BY DATEDIFF(day, '20000102', t.StartDate) % 7
+            ORDER BY DayOfWeek
+            """, p).ToListAsync();
+    }
+
+    public async Task<IEnumerable<RidershipByHourDto>> GetRidershipByHourAsync(TripFilterParams f)
+    {
+        var (join, where, p) = BuildClauses(f);
+        return await db.Database.SqlQueryRaw<RidershipByHourDto>($"""
+            SELECT DATEPART(HOUR, t.StartDate) AS Hour, COUNT(*) AS TripCount
+            FROM Trip t {join}
+            {where}
+            GROUP BY DATEPART(HOUR, t.StartDate)
+            ORDER BY Hour
+            """, p).ToListAsync();
+    }
+
+    public async Task<IEnumerable<RidershipByStationDto>> GetRidershipByStationAsync(TripFilterParams f)
+    {
+        var (join, where, p) = BuildClauses(f);
+        return await db.Database.SqlQueryRaw<RidershipByStationDto>($"""
+            SELECT t.StartStationID AS StationID, COUNT(*) AS TripCount
+            FROM Trip t {join}
+            {where}
+            GROUP BY t.StartStationID
+            ORDER BY TripCount DESC
+            """, p).ToListAsync();
+    }
+
+    public async Task<IEnumerable<RidershipByBikeDto>> GetRidershipByBikeAsync(TripFilterParams f)
+    {
+        var (join, where, p) = BuildClauses(f);
+        return await db.Database.SqlQueryRaw<RidershipByBikeDto>($"""
+            SELECT t.BikeID, COUNT(*) AS TripCount
+            FROM Trip t {join}
+            {where}
+            GROUP BY t.BikeID
+            ORDER BY TripCount DESC
+            """, p).ToListAsync();
+    }
+
+    public async Task<IEnumerable<RidershipByBikeTypeDto>> GetRidershipByBikeTypeAsync(TripFilterParams f)
+    {
+        var (join, where, p) = BuildClauses(f, joinBike: true);
+        return await db.Database.SqlQueryRaw<RidershipByBikeTypeDto>($"""
+            SELECT b.BikeTypeID, COUNT(*) AS TripCount
+            FROM Trip t {join}
+            {where}
+            GROUP BY b.BikeTypeID
+            ORDER BY b.BikeTypeID
+            """, p).ToListAsync();
+    }
+
+    public async Task<IEnumerable<TopRoutePairingDto>> GetTopRoutePairingsAsync(TripFilterParams f)
+    {
+        var (join, where, p) = BuildClauses(f);
+        return await db.Database.SqlQueryRaw<TopRoutePairingDto>($"""
+            SELECT TOP 50 t.StartStationID, t.EndStationID, COUNT(*) AS TripCount
+            FROM Trip t {join}
+            {where}
+            GROUP BY t.StartStationID, t.EndStationID
+            ORDER BY TripCount DESC
+            """, p).ToListAsync();
+    }
+
+    private static (string join, string where, SqlParameter[] parameters) BuildClauses(
+        TripFilterParams f, bool joinBike = false)
+    {
+        var conditions = new List<string>();
+        var parameters = new List<SqlParameter>();
+        var needsBikeJoin = joinBike;
 
         if (f.StationId.HasValue)
-            query = query.Where(t => t.StartStationID == f.StationId || t.EndStationID == f.StationId);
+        {
+            conditions.Add("(t.StartStationID = @StationId OR t.EndStationID = @StationId)");
+            parameters.Add(new SqlParameter("@StationId", f.StationId.Value));
+        }
         if (f.BikeId.HasValue)
-            query = query.Where(t => t.BikeID == f.BikeId);
+        {
+            conditions.Add("t.BikeID = @BikeId");
+            parameters.Add(new SqlParameter("@BikeId", f.BikeId.Value));
+        }
         if (f.BikeTypeId.HasValue)
-            query = query.Where(t => db.Bikes.Any(b => b.BikeID == t.BikeID && b.BikeTypeID == f.BikeTypeId));
+        {
+            needsBikeJoin = true;
+            conditions.Add("b.BikeTypeID = @BikeTypeId");
+            parameters.Add(new SqlParameter("@BikeTypeId", f.BikeTypeId.Value));
+        }
         if (f.PassTypeId.HasValue)
-            query = query.Where(t => t.PassPlanID == f.PassTypeId);
+        {
+            conditions.Add("t.PassPlanID = @PassTypeId");
+            parameters.Add(new SqlParameter("@PassTypeId", f.PassTypeId.Value));
+        }
         if (f.Month.HasValue)
-            query = query.Where(t => t.StartDate.Month == f.Month);
+        {
+            conditions.Add("MONTH(t.StartDate) = @Month");
+            parameters.Add(new SqlParameter("@Month", f.Month.Value));
+        }
         if (f.Year.HasValue)
-            query = query.Where(t => t.StartDate.Year == f.Year);
+        {
+            conditions.Add("YEAR(t.StartDate) = @Year");
+            parameters.Add(new SqlParameter("@Year", f.Year.Value));
+        }
         if (f.DayOfWeek.HasValue)
-            query = query.Where(t => EF.Functions.DateDiffDay(SundayRef, t.StartDate) % 7 == f.DayOfWeek.Value);
+        {
+            conditions.Add("DATEDIFF(day, '20000102', t.StartDate) % 7 = @DayOfWeek");
+            parameters.Add(new SqlParameter("@DayOfWeek", f.DayOfWeek.Value));
+        }
         if (f.Hour.HasValue)
-            query = query.Where(t => t.StartDate.Hour == f.Hour);
+        {
+            conditions.Add("DATEPART(HOUR, t.StartDate) = @Hour");
+            parameters.Add(new SqlParameter("@Hour", f.Hour.Value));
+        }
 
-        return query;
+        var join  = needsBikeJoin    ? "JOIN Bike b ON t.BikeID = b.BikeID" : "";
+        var where = conditions.Count > 0 ? "WHERE " + string.Join(" AND ", conditions) : "";
+        return (join, where, parameters.ToArray());
     }
 }

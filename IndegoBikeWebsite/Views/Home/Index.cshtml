@@ -1,0 +1,233 @@
+@model IndegoBikeWebsite.Models.RidershipViewModel
+
+@{
+    ViewData["Title"] = "Home Page";
+
+    var monthNames = new[] { "January","February","March","April","May","June","July","August","September","October","November","December" };
+    var dayNames   = new[] { "Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday" };
+    var bikeTypes  = new Dictionary<int,string> { [1] = "Electric", [2] = "Standard" };
+
+    string HourLabel(int h) => h == 0 ? "12am" : h < 12 ? $"{h}am" : h == 12 ? "12pm" : $"{h - 12}pm";
+    string StationName(int? id) => Model.Stations.FirstOrDefault(s => s.StationID == id)?.StationName ?? $"Station {id}";
+    string BikeTypeName(int? id) => id.HasValue && bikeTypes.TryGetValue(id.Value, out var n) ? n : $"Type {id}";
+}
+
+<div class="text-center mb-4">
+    <h1 class="display-4">Indego Bike Share</h1>
+</div>
+
+<form method="get" asp-action="Index">
+    <input type="hidden" name="submitted" value="true" />
+
+    <div class="row g-3 mb-3">
+
+        <div class="col-md-4">
+            <label class="form-label fw-semibold">Station</label>
+            <select name="stationId" class="form-select">
+                <option value="">-- All stations --</option>
+                @foreach (var s in Model.Stations)
+                {
+                    <option value="@s.StationID" selected="@(Model.StationId == s.StationID ? "selected" : null)">
+                        @(s.StationName ?? $"Station {s.StationID}")
+                    </option>
+                }
+            </select>
+            @if (!Model.Stations.Any())
+            {
+                <div class="text-danger mt-1 small">Could not load stations. Make sure the API is running.</div>
+            }
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label fw-semibold">Month</label>
+            <select name="month" class="form-select">
+                <option value="">-- All --</option>
+                @for (int i = 0; i < monthNames.Length; i++)
+                {
+                    <option value="@(i+1)" selected="@(Model.Month == i+1 ? "selected" : null)">@monthNames[i]</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label fw-semibold">Year</label>
+            <select name="year" class="form-select">
+                <option value="">-- All --</option>
+                @for (int y = 2016; y <= 2026; y++)
+                {
+                    <option value="@y" selected="@(Model.Year == y ? "selected" : null)">@y</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label fw-semibold">Time</label>
+            <select name="hour" class="form-select">
+                <option value="">-- All --</option>
+                @for (int h = 0; h < 24; h++)
+                {
+                    <option value="@h" selected="@(Model.Hour == h ? "selected" : null)">@HourLabel(h)</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label fw-semibold">Day of Week</label>
+            <select name="dayOfWeek" class="form-select">
+                <option value="">-- All --</option>
+                @for (int d = 0; d < dayNames.Length; d++)
+                {
+                    <option value="@d" selected="@(Model.DayOfWeek == d ? "selected" : null)">@dayNames[d]</option>
+                }
+            </select>
+        </div>
+
+        <div class="col-md-2">
+            <label class="form-label fw-semibold">Bike Type</label>
+            <select name="bikeTypeId" class="form-select">
+                <option value="">-- All --</option>
+                @foreach (var bt in bikeTypes)
+                {
+                    <option value="@bt.Key" selected="@(Model.BikeTypeId == bt.Key ? "selected" : null)">@bt.Value</option>
+                }
+            </select>
+        </div>
+
+    </div>
+
+    <div class="row mb-4">
+        <div class="col">
+            <button type="submit" class="btn btn-primary px-4">Search</button>
+        </div>
+    </div>
+</form>
+
+@if (Model.ResultsLoaded)
+{
+    <div class="row g-4">
+
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header fw-semibold">Ridership by Month</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead><tr><th>Month</th><th>Trips</th></tr></thead>
+                        <tbody>
+                            @foreach (var r in Model.ByMonth)
+                            {
+                                <tr><td>@monthNames[r.Month - 1]</td><td>@r.TripCount.ToString("N0")</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header fw-semibold">Ridership by Day of Week</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead><tr><th>Day</th><th>Trips</th></tr></thead>
+                        <tbody>
+                            @foreach (var r in Model.ByDayOfWeek)
+                            {
+                                <tr><td>@dayNames[r.DayOfWeek]</td><td>@r.TripCount.ToString("N0")</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header fw-semibold">Ridership by Hour</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead><tr><th>Time</th><th>Trips</th></tr></thead>
+                        <tbody>
+                            @foreach (var r in Model.ByHour)
+                            {
+                                <tr><td>@HourLabel(r.Hour)</td><td>@r.TripCount.ToString("N0")</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header fw-semibold">Ridership by Bike Type</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead><tr><th>Type</th><th>Trips</th></tr></thead>
+                        <tbody>
+                            @foreach (var r in Model.ByBikeType)
+                            {
+                                <tr><td>@BikeTypeName(r.BikeTypeID)</td><td>@r.TripCount.ToString("N0")</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header fw-semibold">Ridership by Station</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead><tr><th>Station</th><th>Trips</th></tr></thead>
+                        <tbody>
+                            @foreach (var r in Model.ByStation)
+                            {
+                                <tr><td>@StationName(r.StationID)</td><td>@r.TripCount.ToString("N0")</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-6">
+            <div class="card h-100">
+                <div class="card-header fw-semibold">Ridership by Bike</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead><tr><th>Bike ID</th><th>Trips</th></tr></thead>
+                        <tbody>
+                            @foreach (var r in Model.ByBike.Take(50))
+                            {
+                                <tr><td>@r.BikeID</td><td>@r.TripCount.ToString("N0")</td></tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header fw-semibold">Top Routes</div>
+                <div class="card-body p-0">
+                    <table class="table table-sm table-striped mb-0">
+                        <thead><tr><th>Start Station</th><th>End Station</th><th>Trips</th></tr></thead>
+                        <tbody>
+                            @foreach (var r in Model.TopRoutes)
+                            {
+                                <tr>
+                                    <td>@StationName(r.StartStationID)</td>
+                                    <td>@StationName(r.EndStationID)</td>
+                                    <td>@r.TripCount.ToString("N0")</td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+}
