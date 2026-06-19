@@ -21,6 +21,8 @@ namespace IndegoBikeWebsite.Controllers
             int? stationId, int? month, int? year, int? hour, int? dayOfWeek, int? bikeTypeId,
             bool submitted = false)
         {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
             var client = _httpClientFactory.CreateClient("IndegoBikeAPI");
 
             var vm = new RidershipViewModel

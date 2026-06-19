@@ -7,7 +7,13 @@
     var dayNames   = new[] { "Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday" };
     var bikeTypes  = new Dictionary<int,string> { [1] = "Electric", [2] = "Standard" };
 
-    string HourLabel(int h) => h == 0 ? "12am" : h < 12 ? $"{h}am" : h == 12 ? "12pm" : $"{h - 12}pm";
+    string HourLabel(int h)
+    {
+        if (h == 0) return "12am";
+        if (h < 12) return $"{h}am";
+        if (h == 12) return "12pm";
+        return $"{h - 12}pm";
+    }
     string StationName(int? id) => Model.Stations.FirstOrDefault(s => s.StationID == id)?.StationName ?? $"Station {id}";
     string BikeTypeName(int? id) => id.HasValue && bikeTypes.TryGetValue(id.Value, out var n) ? n : $"Type {id}";
 }

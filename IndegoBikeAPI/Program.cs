@@ -41,6 +41,6 @@ app.UseAuthorization();
 
 app.MapControllers().RequireCors("IndegoBikeWebsite");
 
-app.Run();
+await app.RunAsync();
 
-public partial class Program { }
+public static partial class Program { }
