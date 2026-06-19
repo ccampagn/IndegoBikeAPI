@@ -42,4 +42,6 @@ app.MapControllers().RequireCors("IndegoBikeWebsite");
 
 await app.RunAsync();
 
-public static partial class Program { }
+#pragma warning disable S1118
+public partial class Program { }
+#pragma warning restore S1118
