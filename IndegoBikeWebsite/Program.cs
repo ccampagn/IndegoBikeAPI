@@ -5,10 +5,6 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddHttpClient("IndegoBikeAPI", client =>
 {
     client.BaseAddress = new Uri(builder.Configuration["ApiBaseUrl"]!);
-})
-.ConfigurePrimaryHttpMessageHandler(() => new HttpClientHandler
-{
-    ServerCertificateCustomValidationCallback = HttpClientHandler.DangerousAcceptAnyServerCertificateValidator
 });
 
 var app = builder.Build();
@@ -34,4 +30,4 @@ app.MapControllerRoute(
     .WithStaticAssets();
 
 
-await app.RunAsync();
+await app.RunAsync();         
