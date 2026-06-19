@@ -15,8 +15,7 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("IndegoBikeWebsite", policy =>
         policy.WithOrigins(
-            "http://localhost:5188",
-            "https://localhost:7211")
+            "https://indegobike-b4bdgcayh9heg7as.centralus-01.azurewebsites.net")
               .AllowAnyMethod()
               .AllowAnyHeader());
 });
@@ -41,6 +40,6 @@ app.UseAuthorization();
 
 app.MapControllers().RequireCors("IndegoBikeWebsite");
 
-app.Run();
+await app.RunAsync();
 
-public partial class Program { }
+public static partial class Program { }
