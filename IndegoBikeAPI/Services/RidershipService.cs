@@ -7,9 +7,10 @@ namespace IndegoBikeAPI.Services;
 
 public class RidershipService(IndegoBikeContext db) : IRidershipService
 {
-    public async Task<IEnumerable<RidershipByMonthDto>> GetRidershipByMonthAsync(TripFilterParams f)
+    public async Task<IEnumerable<RidershipByMonthDto>> GetRidershipByMonthAsync(TripFilterParams filters)
     {
-        var (join, where, p) = BuildClauses(f);
+        var (join, where, p) = BuildClauses(filters);
+#pragma warning disable EF1002
         return await db.Database.SqlQueryRaw<RidershipByMonthDto>($"""
             SELECT MONTH(t.StartDate) AS Month, COUNT(*) AS TripCount
             FROM Trip t {join}
@@ -19,9 +20,9 @@ public class RidershipService(IndegoBikeContext db) : IRidershipService
             """, p).ToListAsync();
     }
 
-    public async Task<IEnumerable<RidershipByDayOfWeekDto>> GetRidershipByDayOfWeekAsync(TripFilterParams f)
+    public async Task<IEnumerable<RidershipByDayOfWeekDto>> GetRidershipByDayOfWeekAsync(TripFilterParams filters)
     {
-        var (join, where, p) = BuildClauses(f);
+        var (join, where, p) = BuildClauses(filters);
         return await db.Database.SqlQueryRaw<RidershipByDayOfWeekDto>($"""
             SELECT DATEDIFF(day, '20000102', t.StartDate) % 7 AS DayOfWeek, COUNT(*) AS TripCount
             FROM Trip t {join}
@@ -31,9 +32,9 @@ public class RidershipService(IndegoBikeContext db) : IRidershipService
             """, p).ToListAsync();
     }
 
-    public async Task<IEnumerable<RidershipByHourDto>> GetRidershipByHourAsync(TripFilterParams f)
+    public async Task<IEnumerable<RidershipByHourDto>> GetRidershipByHourAsync(TripFilterParams filters)
     {
-        var (join, where, p) = BuildClauses(f);
+        var (join, where, p) = BuildClauses(filters);
         return await db.Database.SqlQueryRaw<RidershipByHourDto>($"""
             SELECT DATEPART(HOUR, t.StartDate) AS Hour, COUNT(*) AS TripCount
             FROM Trip t {join}
@@ -43,9 +44,9 @@ public class RidershipService(IndegoBikeContext db) : IRidershipService
             """, p).ToListAsync();
     }
 
-    public async Task<IEnumerable<RidershipByStationDto>> GetRidershipByStationAsync(TripFilterParams f)
+    public async Task<IEnumerable<RidershipByStationDto>> GetRidershipByStationAsync(TripFilterParams filters)
     {
-        var (join, where, p) = BuildClauses(f);
+        var (join, where, p) = BuildClauses(filters);
         return await db.Database.SqlQueryRaw<RidershipByStationDto>($"""
             SELECT t.StartStationID AS StationID, COUNT(*) AS TripCount
             FROM Trip t {join}
@@ -55,9 +56,9 @@ public class RidershipService(IndegoBikeContext db) : IRidershipService
             """, p).ToListAsync();
     }
 
-    public async Task<IEnumerable<RidershipByBikeDto>> GetRidershipByBikeAsync(TripFilterParams f)
+    public async Task<IEnumerable<RidershipByBikeDto>> GetRidershipByBikeAsync(TripFilterParams filters)
     {
-        var (join, where, p) = BuildClauses(f);
+        var (join, where, p) = BuildClauses(filters);
         return await db.Database.SqlQueryRaw<RidershipByBikeDto>($"""
             SELECT t.BikeID, COUNT(*) AS TripCount
             FROM Trip t {join}
@@ -67,9 +68,9 @@ public class RidershipService(IndegoBikeContext db) : IRidershipService
             """, p).ToListAsync();
     }
 
-    public async Task<IEnumerable<RidershipByBikeTypeDto>> GetRidershipByBikeTypeAsync(TripFilterParams f)
+    public async Task<IEnumerable<RidershipByBikeTypeDto>> GetRidershipByBikeTypeAsync(TripFilterParams filters)
     {
-        var (join, where, p) = BuildClauses(f, joinBike: true);
+        var (join, where, p) = BuildClauses(filters, joinBike: true);
         return await db.Database.SqlQueryRaw<RidershipByBikeTypeDto>($"""
             SELECT b.BikeTypeID, COUNT(*) AS TripCount
             FROM Trip t {join}
@@ -79,9 +80,9 @@ public class RidershipService(IndegoBikeContext db) : IRidershipService
             """, p).ToListAsync();
     }
 
-    public async Task<IEnumerable<TopRoutePairingDto>> GetTopRoutePairingsAsync(TripFilterParams f)
+    public async Task<IEnumerable<TopRoutePairingDto>> GetTopRoutePairingsAsync(TripFilterParams filters)
     {
-        var (join, where, p) = BuildClauses(f);
+        var (join, where, p) = BuildClauses(filters);
         return await db.Database.SqlQueryRaw<TopRoutePairingDto>($"""
             SELECT TOP 50 t.StartStationID, t.EndStationID, COUNT(*) AS TripCount
             FROM Trip t {join}
@@ -92,52 +93,52 @@ public class RidershipService(IndegoBikeContext db) : IRidershipService
     }
 
     private static (string join, string where, SqlParameter[] parameters) BuildClauses(
-        TripFilterParams f, bool joinBike = false)
+        TripFilterParams filters, bool joinBike = false)
     {
         var conditions = new List<string>();
         var parameters = new List<SqlParameter>();
         var needsBikeJoin = joinBike;
 
-        if (f.StationId.HasValue)
+        if (filters.StationId.HasValue)
         {
             conditions.Add("(t.StartStationID = @StationId OR t.EndStationID = @StationId)");
-            parameters.Add(new SqlParameter("@StationId", f.StationId.Value));
+            parameters.Add(new SqlParameter("@StationId", filters.StationId.Value));
         }
-        if (f.BikeId.HasValue)
+        if (filters.BikeId.HasValue)
         {
             conditions.Add("t.BikeID = @BikeId");
-            parameters.Add(new SqlParameter("@BikeId", f.BikeId.Value));
+            parameters.Add(new SqlParameter("@BikeId", filters.BikeId.Value));
         }
-        if (f.BikeTypeId.HasValue)
+        if (filters.BikeTypeId.HasValue)
         {
             needsBikeJoin = true;
             conditions.Add("b.BikeTypeID = @BikeTypeId");
-            parameters.Add(new SqlParameter("@BikeTypeId", f.BikeTypeId.Value));
+            parameters.Add(new SqlParameter("@BikeTypeId", filters.BikeTypeId.Value));
         }
-        if (f.PassTypeId.HasValue)
+        if (filters.PassTypeId.HasValue)
         {
             conditions.Add("t.PassPlanID = @PassTypeId");
-            parameters.Add(new SqlParameter("@PassTypeId", f.PassTypeId.Value));
+            parameters.Add(new SqlParameter("@PassTypeId", filters.PassTypeId.Value));
         }
-        if (f.Month.HasValue)
+        if (filters.Month.HasValue)
         {
             conditions.Add("MONTH(t.StartDate) = @Month");
-            parameters.Add(new SqlParameter("@Month", f.Month.Value));
+            parameters.Add(new SqlParameter("@Month", filters.Month.Value));
         }
-        if (f.Year.HasValue)
+        if (filters.Year.HasValue)
         {
             conditions.Add("YEAR(t.StartDate) = @Year");
-            parameters.Add(new SqlParameter("@Year", f.Year.Value));
+            parameters.Add(new SqlParameter("@Year", filters.Year.Value));
         }
-        if (f.DayOfWeek.HasValue)
+        if (filters.DayOfWeek.HasValue)
         {
             conditions.Add("DATEDIFF(day, '20000102', t.StartDate) % 7 = @DayOfWeek");
-            parameters.Add(new SqlParameter("@DayOfWeek", f.DayOfWeek.Value));
+            parameters.Add(new SqlParameter("@DayOfWeek", filters.DayOfWeek.Value));
         }
-        if (f.Hour.HasValue)
+        if (filters.Hour.HasValue)
         {
             conditions.Add("DATEPART(HOUR, t.StartDate) = @Hour");
-            parameters.Add(new SqlParameter("@Hour", f.Hour.Value));
+            parameters.Add(new SqlParameter("@Hour", filters.Hour.Value));
         }
 
         var join  = needsBikeJoin    ? "JOIN Bike b ON t.BikeID = b.BikeID" : "";
