@@ -1,7 +1,9 @@
+using System.Diagnostics;
 using System.Net;
 using IndegoBikeWebsite.Controllers;
 using IndegoBikeWebsite.Models;
 using IndegoBikeWebsite.Tests.Helpers;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging.Abstractions;
 using Moq;
@@ -191,5 +193,78 @@ public class HomeControllerTests
         Assert.Empty(vm.ByBike);
         Assert.Empty(vm.ByBikeType);
         Assert.Empty(vm.TopRoutes);
+    }
+
+    [Fact]
+    public async Task Index_InvalidModelState_ReturnsBadRequest()
+    {
+        var (controller, _) = Build();
+        controller.ModelState.AddModelError("stationId", "Invalid value");
+
+        var result = await controller.Index(null, null, null, null, null, null, submitted: false);
+
+        Assert.IsType<BadRequestObjectResult>(result);
+    }
+
+    [Fact]
+    public async Task Index_Submitted_FetchThrows_ReturnsGracefullyWithEmptyLists()
+    {
+        var handler = new ThrowingHttpMessageHandler();
+        var client = new HttpClient(handler) { BaseAddress = new Uri("https://api.test/") };
+        var factory = new Mock<IHttpClientFactory>();
+        factory.Setup(f => f.CreateClient("IndegoBikeAPI")).Returns(client);
+        var controller = new HomeController(NullLogger<HomeController>.Instance, factory.Object);
+
+        var result = await controller.Index(null, null, null, null, null, null, submitted: true);
+
+        var vm = GetViewModel(result);
+        Assert.Empty(vm.Stations);
+        Assert.True(vm.ResultsLoaded);
+        Assert.Empty(vm.ByMonth);
+    }
+
+    [Fact]
+    public void Privacy_ReturnsView()
+    {
+        var (controller, _) = Build();
+
+        var result = controller.Privacy();
+
+        Assert.IsType<ViewResult>(result);
+    }
+
+    [Fact]
+    public void Error_WhenNoActivity_UsesHttpContextTraceIdentifier()
+    {
+        var (controller, _) = Build();
+        Activity.Current = null;
+        var httpContext = new DefaultHttpContext();
+        controller.ControllerContext = new ControllerContext { HttpContext = httpContext };
+
+        var result = controller.Error();
+
+        var view = Assert.IsType<ViewResult>(result);
+        var model = Assert.IsType<ErrorViewModel>(view.Model);
+        Assert.Equal(httpContext.TraceIdentifier, model.RequestId);
+    }
+
+    [Fact]
+    public void Error_WhenActivityIsActive_UsesActivityId()
+    {
+        var (controller, _) = Build();
+        controller.ControllerContext = new ControllerContext { HttpContext = new DefaultHttpContext() };
+        var activity = new Activity("TestOperation").Start();
+        try
+        {
+            var result = controller.Error();
+
+            var view = Assert.IsType<ViewResult>(result);
+            var model = Assert.IsType<ErrorViewModel>(view.Model);
+            Assert.Equal(activity.Id, model.RequestId);
+        }
+        finally
+        {
+            activity.Stop();
+        }
     }
 }
