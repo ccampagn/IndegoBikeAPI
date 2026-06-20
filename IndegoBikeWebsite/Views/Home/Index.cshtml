@@ -28,16 +28,17 @@
     <div class="row g-3 mb-3">
 
         <div class="col-md-4">
-            <label class="form-label fw-semibold">Station</label>
-            <select name="stationId" class="form-select">
-                <option value="">-- All stations --</option>
-                @foreach (var s in Model.Stations)
-                {
-                    <option value="@s.StationID" selected="@(Model.StationId == s.StationID ? "selected" : null)">
-                        @(s.StationName ?? $"Station {s.StationID}")
-                    </option>
-                }
-            </select>
+            <label class="form-label fw-semibold">Station
+                <select name="stationId" class="form-select">
+                    <option value="">-- All stations --</option>
+                    @foreach (var s in Model.Stations)
+                    {
+                        <option value="@s.StationID" selected="@(Model.StationId == s.StationID ? "selected" : null)">
+                            @(s.StationName ?? $"Station {s.StationID}")
+                        </option>
+                    }
+                </select>
+            </label>
             @if (!Model.Stations.Any())
             {
                 <div class="text-danger mt-1 small">Could not load stations. Make sure the API is running.</div>
@@ -45,47 +46,51 @@
         </div>
 
         <div class="col-md-2">
-            <label class="form-label fw-semibold">Month</label>
-            <select name="month" class="form-select">
-                <option value="">-- All --</option>
-                @for (int i = 0; i < monthNames.Length; i++)
-                {
-                    <option value="@(i+1)" selected="@(Model.Month == i+1 ? "selected" : null)">@monthNames[i]</option>
-                }
-            </select>
+            <label class="form-label fw-semibold">Month
+                <select name="month" class="form-select">
+                    <option value="">-- All --</option>
+                    @for (int i = 0; i < monthNames.Length; i++)
+                    {
+                        <option value="@(i+1)" selected="@(Model.Month == i+1 ? "selected" : null)">@monthNames[i]</option>
+                    }
+                </select>
+            </label>
         </div>
 
         <div class="col-md-2">
-            <label class="form-label fw-semibold">Year</label>
-            <select name="year" class="form-select">
-                <option value="">-- All --</option>
-                @for (int y = 2016; y <= 2026; y++)
-                {
-                    <option value="@y" selected="@(Model.Year == y ? "selected" : null)">@y</option>
-                }
-            </select>
+            <label class="form-label fw-semibold">Year
+                <select name="year" class="form-select">
+                    <option value="">-- All --</option>
+                    @for (int y = 2016; y <= 2026; y++)
+                    {
+                        <option value="@y" selected="@(Model.Year == y ? "selected" : null)">@y</option>
+                    }
+                </select>
+            </label>
         </div>
 
         <div class="col-md-2">
-            <label class="form-label fw-semibold">Time</label>
-            <select name="hour" class="form-select">
-                <option value="">-- All --</option>
-                @for (int h = 0; h < 24; h++)
-                {
-                    <option value="@h" selected="@(Model.Hour == h ? "selected" : null)">@HourLabel(h)</option>
-                }
-            </select>
+            <label class="form-label fw-semibold">Time
+                <select name="hour" class="form-select">
+                    <option value="">-- All --</option>
+                    @for (int h = 0; h < 24; h++)
+                    {
+                        <option value="@h" selected="@(Model.Hour == h ? "selected" : null)">@HourLabel(h)</option>
+                    }
+                </select>
+            </label>
         </div>
 
         <div class="col-md-2">
-            <label class="form-label fw-semibold">Day of Week</label>
-            <select name="dayOfWeek" class="form-select">
-                <option value="">-- All --</option>
-                @for (int d = 0; d < dayNames.Length; d++)
-                {
-                    <option value="@d" selected="@(Model.DayOfWeek == d ? "selected" : null)">@dayNames[d]</option>
-                }
-            </select>
+            <label class="form-label fw-semibold">Day of Week
+                <select name="dayOfWeek" class="form-select">
+                    <option value="">-- All --</option>
+                    @for (int d = 0; d < dayNames.Length; d++)
+                    {
+                        <option value="@d" selected="@(Model.DayOfWeek == d ? "selected" : null)">@dayNames[d]</option>
+                    }
+                </select>
+            </label>
         </div>
 
         <div class="col-md-2">
@@ -98,7 +103,6 @@
                 }
             </select>
         </div>
-
     </div>
 
     <div class="row mb-4">

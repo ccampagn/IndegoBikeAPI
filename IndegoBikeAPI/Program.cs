@@ -3,45 +3,50 @@ using IndegoBikeAPI.Services;
 using Microsoft.EntityFrameworkCore;
 using Scalar.AspNetCore;
 
-var builder = WebApplication.CreateBuilder(args);
+namespace IndegoBikeAPI;
 
-builder.Services.AddDbContext<IndegoBikeContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("IndegoBike")));
-
-builder.Services.AddScoped<IStationService, StationService>();
-builder.Services.AddScoped<IRidershipService, RidershipService>();
-
-builder.Services.AddCors(options =>
+public partial class Program
 {
-    options.AddPolicy("IndegoBikeWebsite", policy =>
-        policy.WithOrigins(
-            "https://indegobike-b4bdgcayh9heg7as.centralus-01.azurewebsites.net")
-              .AllowAnyMethod()
-              .AllowAnyHeader());
-});
+    protected Program() { }
 
-builder.Services.AddControllers();
-builder.Services.AddOpenApi();
+    public static async Task Main(string[] args)
+    {
+        var builder = WebApplication.CreateBuilder(args);
 
-var app = builder.Build();
+        builder.Services.AddDbContext<IndegoBikeContext>(options =>
+            options.UseSqlServer(builder.Configuration.GetConnectionString("IndegoBike")));
 
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-    app.MapScalarApiReference();
+        builder.Services.AddScoped<IStationService, StationService>();
+        builder.Services.AddScoped<IRidershipService, RidershipService>();
+
+        builder.Services.AddCors(options =>
+        {
+            options.AddPolicy("IndegoBikeWebsite", policy =>
+                policy.WithOrigins(
+                    "https://indegobike-b4bdgcayh9heg7as.centralus-01.azurewebsites.net")
+                      .AllowAnyMethod()
+                      .AllowAnyHeader());
+        });
+
+        builder.Services.AddControllers();
+        builder.Services.AddOpenApi();
+
+        var app = builder.Build();
+
+        if (app.Environment.IsDevelopment())
+        {
+            app.MapOpenApi();
+            app.MapScalarApiReference();
+        }
+
+        app.UseHttpsRedirection();
+
+        app.UseCors("IndegoBikeWebsite");
+
+        app.UseAuthorization();
+
+        app.MapControllers().RequireCors("IndegoBikeWebsite");
+
+        await app.RunAsync();
+    }
 }
-
-app.UseHttpsRedirection();
-
-app.UseCors("IndegoBikeWebsite");
-
-app.UseAuthorization();
-
-app.MapControllers().RequireCors("IndegoBikeWebsite");
-
-await app.RunAsync();
-
-#pragma warning disable S1118
-public partial class Program { }
-#pragma warning restore S1118

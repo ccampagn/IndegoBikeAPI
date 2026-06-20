@@ -132,7 +132,7 @@ public class HomeControllerTests
 
         await controller.Index(null, null, year: 2023, null, null, null, submitted: true);
 
-        Assert.True(handler.Requests.Any(r => r.Query.Contains("year=2023")));
+        Assert.Contains(handler.Requests, r => r.Query.Contains("year=2023"));
     }
 
     [Fact]
@@ -142,7 +142,7 @@ public class HomeControllerTests
 
         await controller.Index(stationId: 5, null, null, null, null, null, submitted: true);
 
-        Assert.True(handler.Requests.Any(r => r.Query.Contains("stationId=5")));
+        Assert.Contains(handler.Requests, r => r.Query.Contains("stationId=5"));
     }
 
     [Fact]
