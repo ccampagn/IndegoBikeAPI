@@ -1,10 +1,12 @@
 using IndegoBikeWebsite.Models;
 using Microsoft.AspNetCore.Mvc;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 
 namespace IndegoBikeWebsite.Controllers
 {
+    [ExcludeFromCodeCoverage]
     public class HomeController : Controller
     {
         private readonly ILogger<HomeController> _logger;
