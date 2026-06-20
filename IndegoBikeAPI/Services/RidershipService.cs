@@ -1,6 +1,5 @@
 using IndegoBikeAPI.Data;
 using IndegoBikeAPI.Models;
-using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace IndegoBikeAPI.Services;
@@ -19,15 +18,12 @@ public class RidershipService(IndegoBikeContext db) : IRidershipService
 
     public async Task<IEnumerable<RidershipByDayOfWeekDto>> GetRidershipByDayOfWeekAsync(TripFilterParams filters)
     {
-        var (join, where, p) = BuildRawClauses(filters);
-#pragma warning disable EF1002
-        return await db.Database.SqlQueryRaw<RidershipByDayOfWeekDto>($"""
-            SELECT DATEDIFF(day, '20000102', t.StartDate) % 7 AS DayOfWeek, COUNT(*) AS TripCount
-            FROM Trip t {join}
-            {where}
-            GROUP BY DATEDIFF(day, '20000102', t.StartDate) % 7
-            ORDER BY DayOfWeek
-            """, p).ToListAsync();
+        var query = ApplyFilters(db.Trips.AsQueryable(), filters);
+        return await query
+            .GroupBy(t => (int)t.StartDate.DayOfWeek)
+            .Select(g => new RidershipByDayOfWeekDto { DayOfWeek = g.Key, TripCount = g.Count() })
+            .OrderBy(r => r.DayOfWeek)
+            .ToListAsync();
     }
 
     public async Task<IEnumerable<RidershipByHourDto>> GetRidershipByHourAsync(TripFilterParams filters)
@@ -101,61 +97,10 @@ public class RidershipService(IndegoBikeContext db) : IRidershipService
             query = query.Where(t => t.StartDate.Month == filters.Month);
         if (filters.Year.HasValue)
             query = query.Where(t => t.StartDate.Year == filters.Year);
+        if (filters.DayOfWeek.HasValue)
+            query = query.Where(t => (int)t.StartDate.DayOfWeek == filters.DayOfWeek);
         if (filters.Hour.HasValue)
             query = query.Where(t => t.StartDate.Hour == filters.Hour);
         return query;
-    }
-
-    private static (string join, string where, SqlParameter[] parameters) BuildRawClauses(TripFilterParams filters)
-    {
-        var conditions = new List<string>();
-        var parameters = new List<SqlParameter>();
-        var needsBikeJoin = false;
-
-        if (filters.StationId.HasValue)
-        {
-            conditions.Add("(t.StartStationID = @StationId OR t.EndStationID = @StationId)");
-            parameters.Add(new SqlParameter("@StationId", filters.StationId.Value));
-        }
-        if (filters.BikeId.HasValue)
-        {
-            conditions.Add("t.BikeID = @BikeId");
-            parameters.Add(new SqlParameter("@BikeId", filters.BikeId.Value));
-        }
-        if (filters.BikeTypeId.HasValue)
-        {
-            needsBikeJoin = true;
-            conditions.Add("b.BikeTypeID = @BikeTypeId");
-            parameters.Add(new SqlParameter("@BikeTypeId", filters.BikeTypeId.Value));
-        }
-        if (filters.PassTypeId.HasValue)
-        {
-            conditions.Add("t.PassPlanID = @PassTypeId");
-            parameters.Add(new SqlParameter("@PassTypeId", filters.PassTypeId.Value));
-        }
-        if (filters.Month.HasValue)
-        {
-            conditions.Add("MONTH(t.StartDate) = @Month");
-            parameters.Add(new SqlParameter("@Month", filters.Month.Value));
-        }
-        if (filters.Year.HasValue)
-        {
-            conditions.Add("YEAR(t.StartDate) = @Year");
-            parameters.Add(new SqlParameter("@Year", filters.Year.Value));
-        }
-        if (filters.DayOfWeek.HasValue)
-        {
-            conditions.Add("DATEDIFF(day, '20000102', t.StartDate) % 7 = @DayOfWeek");
-            parameters.Add(new SqlParameter("@DayOfWeek", filters.DayOfWeek.Value));
-        }
-        if (filters.Hour.HasValue)
-        {
-            conditions.Add("DATEPART(HOUR, t.StartDate) = @Hour");
-            parameters.Add(new SqlParameter("@Hour", filters.Hour.Value));
-        }
-
-        var join  = needsBikeJoin ? "JOIN Bike b ON t.BikeID = b.BikeID" : "";
-        var where = conditions.Count > 0 ? "WHERE " + string.Join(" AND ", conditions) : "";
-        return (join, where, parameters.ToArray());
     }
 }

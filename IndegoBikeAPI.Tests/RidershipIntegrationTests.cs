@@ -277,8 +277,41 @@ public class RidershipIntegrationTests : IClassFixture<RidershipApiFactory>
         Assert.Equal(2, result[0].TripCount);
     }
 
-    // Note: /api/ridership/by-day-of-week is not covered in integration tests.
-    // EF.Functions.DateDiffDay is SQL Server-specific and cannot run against
-    // the InMemory provider used here. It is covered via a mocked service in
-    // RidershipControllerTests.GetByDayOfWeek_ReturnsOkWithServiceResult.
+    // ---------------------------------------------------------------
+    // GET /api/ridership/by-day-of-week
+    // ---------------------------------------------------------------
+
+    [Fact]
+    public async Task GetByDayOfWeek_ReturnsOkWithGroupedData()
+    {
+        // 2024-01-01 = Monday (1), 2024-01-02 = Tuesday (2)
+        SeedData(new[]
+        {
+            T(1, new DateTime(2024, 1, 1)),
+            T(2, new DateTime(2024, 1, 1)),
+            T(3, new DateTime(2024, 1, 2))
+        });
+
+        var response = await _client.GetAsync("/api/ridership/by-day-of-week");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<List<RidershipByDayOfWeekDto>>();
+        Assert.NotNull(result);
+        Assert.Equal(2, result.Count);
+        Assert.Equal(1, result[0].DayOfWeek);
+        Assert.Equal(2, result[0].TripCount);
+    }
+
+    [Fact]
+    public async Task GetByDayOfWeek_EmptyDatabase_ReturnsEmptyArray()
+    {
+        SeedData(Array.Empty<Trip>());
+
+        var response = await _client.GetAsync("/api/ridership/by-day-of-week");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var result = await response.Content.ReadFromJsonAsync<List<RidershipByDayOfWeekDto>>();
+        Assert.NotNull(result);
+        Assert.Empty(result);
+    }
 }

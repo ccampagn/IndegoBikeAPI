@@ -362,9 +362,51 @@ public class RidershipServiceTests
     }
 
     // ---------------------------------------------------------------
-    // GetRidershipByDayOfWeekAsync — not tested here.
-    // EF.Functions.DateDiffDay is SQL Server-specific and throws with
-    // the InMemory provider. It is covered in RidershipControllerTests
-    // via a mocked service.
+    // GetRidershipByDayOfWeekAsync
     // ---------------------------------------------------------------
+
+    [Fact]
+    public async Task GetRidershipByDayOfWeek_GroupsAndOrdersByDayOfWeek()
+    {
+        using var db = CreateContext(nameof(GetRidershipByDayOfWeek_GroupsAndOrdersByDayOfWeek));
+        // 2024-01-01 = Monday (1), 2024-01-02 = Tuesday (2)
+        db.Trips.AddRange(
+            T(1, new DateTime(2024, 1, 1)),
+            T(2, new DateTime(2024, 1, 1)),
+            T(3, new DateTime(2024, 1, 2)));
+        await db.SaveChangesAsync();
+
+        var result = (await new RidershipService(db).GetRidershipByDayOfWeekAsync(new())).ToList();
+
+        Assert.Equal(2, result.Count);
+        Assert.Equal(1, result[0].DayOfWeek); Assert.Equal(2, result[0].TripCount);
+        Assert.Equal(2, result[1].DayOfWeek); Assert.Equal(1, result[1].TripCount);
+    }
+
+    [Fact]
+    public async Task GetRidershipByDayOfWeek_FilterByDayOfWeek()
+    {
+        using var db = CreateContext(nameof(GetRidershipByDayOfWeek_FilterByDayOfWeek));
+        db.Trips.AddRange(
+            T(1, new DateTime(2024, 1, 1)), // Monday (1)
+            T(2, new DateTime(2024, 1, 1)), // Monday (1)
+            T(3, new DateTime(2024, 1, 2))); // Tuesday (2)
+        await db.SaveChangesAsync();
+
+        var result = (await new RidershipService(db).GetRidershipByDayOfWeekAsync(new() { DayOfWeek = 1 })).ToList();
+
+        Assert.Single(result);
+        Assert.Equal(1, result[0].DayOfWeek);
+        Assert.Equal(2, result[0].TripCount);
+    }
+
+    [Fact]
+    public async Task GetRidershipByDayOfWeek_NoTrips_ReturnsEmpty()
+    {
+        using var db = CreateContext(nameof(GetRidershipByDayOfWeek_NoTrips_ReturnsEmpty));
+
+        var result = await new RidershipService(db).GetRidershipByDayOfWeekAsync(new());
+
+        Assert.Empty(result);
+    }
 }
