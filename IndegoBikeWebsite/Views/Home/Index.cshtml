@@ -94,14 +94,15 @@
         </div>
 
         <div class="col-md-2">
-            <label class="form-label fw-semibold">Bike Type</label>
-            <select name="bikeTypeId" class="form-select">
-                <option value="">-- All --</option>
-                @foreach (var bt in bikeTypes)
-                {
-                    <option value="@bt.Key" selected="@(Model.BikeTypeId == bt.Key ? "selected" : null)">@bt.Value</option>
-                }
-            </select>
+            <label class="form-label fw-semibold">Bike Type
+                <select name="bikeTypeId" class="form-select">
+                    <option value="">-- All --</option>
+                    @foreach (var bt in bikeTypes)
+                    {
+                        <option value="@bt.Key" selected="@(Model.BikeTypeId == bt.Key ? "selected" : null)">@bt.Value</option>
+                    }
+                </select>
+            </label>
         </div>
     </div>
 
