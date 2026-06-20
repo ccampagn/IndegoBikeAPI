@@ -14,7 +14,7 @@ public class RidershipService(IndegoBikeContext db) : IRidershipService
             .GroupBy(t => t.StartDate.Month)
             .Select(g => new RidershipByMonthDto { Month = g.Key, TripCount = g.Count() })
             .OrderBy(r => r.Month)
-            .ToListAsync();
+            .ToListAsync(); 
     }
 
     public async Task<IEnumerable<RidershipByDayOfWeekDto>> GetRidershipByDayOfWeekAsync(TripFilterParams filters)
